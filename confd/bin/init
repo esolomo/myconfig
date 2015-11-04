@@ -2,9 +2,9 @@
 
 set -eo pipefail
 
-export CONSUL_PORT=${ETCD_PORT:-8500}
+export CM_PORT=${CM_PORT:-8500}
 export HOST_IP=${HOST_IP:-10.152.253.248}
-export ETCD=$HOST_IP:$ETCD_PORT
+export CM=$HOST_IP:$CM_PORT
 export LABEL="[VivaCloud]"
 export GLOBAL_SERVICE="[MeteorJS]"
 export SERVICE_ID=${SERVICE_ID:-meteorjs.internal}
@@ -24,8 +24,8 @@ do
     cat /etc/confd/service_tpl/deploy.conf.toml | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/conf.d/deploy.sh.toml"
     cat /etc/confd/service_tpl/deploy.sh.tmpl | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/templates/deploy.sh.tmpl"
     sleep 5
-    echo $ETCD
-    /usr/local/bin/confd -watch  -backend=consul  -node $ETCD  -confdir="/etc/confd/${service}" 
+    echo $CM
+    /usr/local/bin/confd -watch  -backend=consul  -node $CM  -confdir="/etc/confd/${service}" 
     echo "Initialization for service  ${service} : completed"
 done
 
