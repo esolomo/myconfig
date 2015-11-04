@@ -1,0 +1,25 @@
+#!/bin/bash
+
+set -eo pipefail
+
+export ETCD_PORT=${ETCD_PORT:-4001}
+export HOST_IP=${HOST_IP:-10.10.80.131}
+export ETCD=$HOST_IP:$ETCD_PORT
+
+echo "[vivacloud] starting phpfpm service container"
+
+until confd -onetime -node $ETCD -config-file /etc/confd/conf.d/deploy.conf.toml; do
+    echo "[vivacloud][phpfpm] No service configuration available ..." | tee -a  /var/log/confd/confd-watch.log
+    sleep 5
+done
+
+# Put a continual polling `confd` process into the background to watch
+# for changes every 10 seconds
+confd -interval 30 -node $ETCD -config-file /etc/confd/conf.d/deploy.conf.toml &
+
+echo "[vivacloud][phpfpm] confd is now monitoring registry for changes..."
+
+# Follow the logs to allow the script to continue running
+tail -f /dev/console
+
+

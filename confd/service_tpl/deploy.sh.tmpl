@@ -1,0 +1,149 @@
+#!/bin/sh
+
+export ENV=${ENV:-DEV}
+export REPO_URL="{{getv "/viva/global/repo_base_url"}}"
+export NOTIFICATION_URL="{{getv "/viva/global/notification_url"}}"  
+export ROOM_ID="{{getv "/viva/global/roomid"}}"
+export DEPLOYID="{{getv "/viva-service/deploy/deployid"}}"
+export GROUPID="{{getv "/viva-service/deploy/groupid"}}"
+export PRODUCTID="{{getv "/viva-service/deploy/product"}}"
+export VERSION="{{getv "/viva-service/deploy/version"}}"
+export ARTIFACTID="{{getv "/viva-service/deploy/artifact"}}"
+export CLASSIFIER="{{getv "/viva-service/deploy/classifier"}}"
+export CONFIGONLY={{getv "/viva-service/deploy/configonly"}}
+export SNAPSHOT={{getv "/viva-service/deploy/snapshot"}}
+export FACE={{getv "/viva-service/deploy/face"}}
+
+
+export NOTIFICATION_USER="VivaCloud"
+
+
+export ANNOUNCE_MSG="Update in progress in ${ENV} for ${ARTIFACTID} version: ${VERSION}"
+export SUCCESS_CONFIG_ONLY_MSG="Configuration update successfull in ${ENV} for ${ARTIFACTID} v${VERSION}"
+export FAILURE_CONFIG_ONLY_MSG="Configuration update failure in ${ENV} for ${ARTIFACTID} v${VERSION}"
+export SUCCESS_MSG="Deployment update successfull in ${ENV} for ${ARTIFACTID} v${VERSION}" 
+export FAILURE_MSG="Deployment update failure+in ${ENV} for ${ARTIFACTID} v${VERSION}" 
+
+export LABEL="[vivacloud][deployment]"
+
+tmp_deployid=$(mktemp -d -t tmpdeploy.XXXXXXXXXX)
+
+function deploy_service {
+
+curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} Deployment operation request"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+
+echo -n "${LABEL}${TYPE}  Sending notification"
+curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${ANNOUNCE_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+echo " "
+
+if ${CONFIGONLY}; then
+    echo "${LABEL}${TYPE} configuring service only"
+    if [ -e /sites/${PRODUCTID}/confd/bin/confd-watch ]
+    then
+	/bin/bash /sites/${PRODUCTID}/confd/bin/confd-watch 
+	echo -n "${LABEL}${TYPE}  Sending notification"
+	curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+	exit 0  
+    fi
+    echo -n "${LABEL}${TYPE}  Sending notification"
+    curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${FAILURE_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+    exit 1  
+fi
+
+
+echo "${LABEL}${TYPE} Starting deployment for ${PRODUCTID} version ${VERSION} : " 
+
+if ${SNAPSHOT}; then
+    export TYPE="[SNAPSHOT]"
+    TO_DOWNLOAD="${REPO_URL}?r=snapshots&g=${GROUPID}&a=${ARTIFACTID}&c=${CLASSIFIER}&p=tar.gz&v=LATEST"    
+else
+    export TYPE="[RELEASE]"
+    TO_DOWNLOAD="${REPO_URL}?r=releases&g=${GROUPID}&a=${ARTIFACTID}&c=${CLASSIFIER}&p=tar.gz&v=${VERSION}"
+fi
+
+
+
+
+echo "${LABEL}${TYPE} DEPLOYMENT FOR  : ${PRODUCTID}"   
+echo "${LABEL}${TYPE} REPO_URL        : ${REPO_URL}"  
+echo "${LABEL}${TYPE} GROUPID         : ${GROUPID}"  
+echo "${LABEL}${TYPE} ARTIFACTID      : ${ARTIFACTID}"  
+echo "${LABEL}${TYPE} VERSION         : ${VERSION}"  
+echo "${LABEL}${TYPE} CLASSIFIER      : ${CLASSIFIER}"  
+
+
+echo  "${LABEL}${TYPE} Update in progress ... "  
+
+echo "${LABEL}${TYPE} Cleaning up former artifact" 
+mv  /usr/src/${ARTIFACTID}.tar.gz  /usr/src/${ARTIFACTID}.old.tar.gz 
+md5sum /usr/src/${ARTIFACTID}.old.tar.gz | cut -f 1 -d ' ' > /usr/src/${ARTIFACTID}.old.md5
+
+echo "${LABEL}${TYPE} Downloading ${TO_DOWNLOAD} " 
+wget -t 3 ${TO_DOWNLOAD}  -O /usr/src/${ARTIFACTID}.tar.gz 
+
+if [ $? -eq 0 ]
+then
+
+
+    md5sum /usr/src/${ARTIFACTID}.tar.gz | cut -f 1 -d ' ' > /usr/src/${ARTIFACTID}.new.md5
+    diff /usr/src/{$ARTIFACTID}.old.md5 /usr/src/${ARTIFACTID}.new.md5
+
+    
+    if [ $? ]
+    then
+	echo "${LABEL}${TYPE}  Stopping service"  
+	/bin/bash /sites/${PRODUCTID}/bin/stop.sh 
+	
+	echo "${LABEL}${TYPE} Cleaning up product directory " 
+	rm -rf /site/${PRODUCTID}
+	
+	echo "${LABEL}${TYPE} Extracting service artifact" 
+  	tar xvzf  /usr/src/${ARTIFACTID}.tar.gz -C /sites 
+	
+	echo "${LABEL}${TYPE} Installing service" 
+	/bin/bash /sites/${PRODUCTID}/confd/bin/install.sh 
+	
+	
+	echo "${LABEL}${TYPE} configuring service" 
+	cp -r /sites/${PRODUCTID}/confd/conf.d/* /etc/confd/conf.d/
+	cp -r /sites/${PRODUCTID}/confd/templates/* /etc/confd/templates/
+	echo "${LABEL} Configuring app "
+
+	confd -debug=true -verbose=true -onetime -node $ETCD  -confdir=/sites/${PRODUCTID}/confd
+	
+	if [ $? ]
+	then
+	    echo -n "${LABEL}${TYPE}  Sending notification"
+	curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+	echo ""
+	else
+	    echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has failed " 
+	    echo -n "${LABEL}${TYPE}  Sending notification"
+	    curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${FAILURE_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+	    echo ""
+	    exit 1
+	fi
+    else
+	echo "${LABEL}${TYPE} Same artifact nothing to do"
+	exit 0	
+    fi
+    
+
+else
+    echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has failed "     
+    exit 1
+fi
+
+
+echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has been successfull " 
+
+echo -n "${LABEL}${TYPE}  Sending notification"
+curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+echo ""
+
+rm -rf "$tmp_deployid"
+exit 0
+}
+
+trap deploy_service exit
+

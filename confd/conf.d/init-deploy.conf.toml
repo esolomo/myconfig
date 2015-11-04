@@ -1,0 +1,13 @@
+[template]
+src = "init-deploy.sh.tmpl"
+dest = "/usr/local/bin/init-deploy.sh"
+keys = [
+    "/viva/global/repo_base_url",
+    "/viva/global/roomid",
+    "/viva/global/notification_url",
+    "/ms-nodejs/deploy/services",
+]
+
+reload_cmd = "/bin/bash /usr/local/bin/init-deploy.sh | tee -a /var/log/confd/deploy.log > /dev/console"
+
+

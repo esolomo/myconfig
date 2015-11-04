@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -eo pipefail
+
+export ETCD_PORT=${ETCD_PORT:-4001}
+export HOST_IP=${HOST_IP:-10.10.80.131}
+export ETCD=$HOST_IP:$ETCD_PORT
+export LABEL="[VivaCloud]"
+export GLOBAL_SERVICE="[MeteorJS]"
+export SERVICE_ID=${SERVICE_ID:-meteorjs.internal}
+
+for service in ${SERVICE_ID}
+do
+    echo "Initializing service : ${service}"
+    mkdir /etc/confd/${service}
+    mkdir /etc/confd/${service}/conf.d
+    mkdir /etc/confd/${service}/templates
+    cat /etc/confd/service_tpl/deploy.conf.toml | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/conf.d/deploy.sh.toml"
+    cat /etc/confd/service_tpl/deploy.sh.tmpl | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/templates/deploy.sh.tmpl"
+    sleep 5
+    echo $ETCD
+    /usr/local/bin/confd -watch=true  -node $ETCD  -confdir="/etc/confd/${service}" &
+    echo "Initialization for service  ${service} : completed"
+done
+
+echo "Vivacloud Meteor Initialization Completed"
+echo "${LABEL} starting meteorjs service container"
+
+# Put a continual polling `confd` process into the background to watch
+# for changes every 10 seconds
+
+# Follow the logs to allow the script to continue running
+tail -f /dev/console
+
+

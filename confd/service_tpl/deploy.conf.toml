@@ -1,0 +1,22 @@
+[template]
+src = "deploy.sh.tmpl"
+dest = "/usr/local/bin/deploy-viva-service.sh"
+keys = [
+    "/viva/global/repo_base_url",
+    "/viva/global/roomid",
+    "/viva/global/notification_url",
+    "/viva-service/deploy/deployid",
+    "/viva-service/deploy/product",
+    "/viva-service/deploy/artifact",
+    "/viva-service/deploy/groupid",
+    "/viva-service/deploy/version",
+    "/viva-service/deploy/classifier",
+    "/viva-service/deploy/type",
+    "/viva-service/deploy/snapshot",
+    "/viva-service/deploy/configonly",
+    "/viva-service/deploy/face",
+]
+
+reload_cmd = "/bin/bash /usr/local/bin/deploy-viva-service.sh"
+
+

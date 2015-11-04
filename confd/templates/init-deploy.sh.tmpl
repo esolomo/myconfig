@@ -1,0 +1,29 @@
+#!/bin/sh
+
+
+export ENV=${ENV:-DEV}
+export ETCD=${ETCD:-127.0.0.1}
+export DEPLOYID="{{getv "/ms-nodejs/deploy/services"}}"
+export REPO_BASE_URL="{{getv "/viva/global/repo_base_url"}}" 
+export ROOMID="{{getv "/viva/global/roomid"}}"
+export NOTIFICATION_URL="{{getv "/viva/global/notification_url"}}"
+
+export LABEL="[VivaCloud]"
+
+for service in ${DEPLOYID}
+do
+    echo "Initializing service : ${service}"
+#    curl -X POST --data-urlencode 'payload={"text": "'"${LABEL}${GLOBAL_SERVICE} Deployment operation request for ${service}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+    mkdir /etc/confd/${service}
+    mkdir /etc/confd/${service}/conf.d
+    mkdir /etc/confd/${service}/templates
+    cat /etc/confd/service_tpl/deploy.conf.toml | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/conf.d/deploy.sh.toml"
+    cat /etc/confd/service_tpl/deploy.sh.tmpl | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/templates/deploy.sh.tmpl"
+    sleep 5
+    echo $ETCD
+    /usr/local/bin/confd -debug=true -verbose=true -watch=true  -node $ETCD  -confdir="/etc/confd/${service}" &
+    echo "Initialization for service  ${service} : completed"
+done
+
+echo "Vivacloud Completed"
+exit 0
