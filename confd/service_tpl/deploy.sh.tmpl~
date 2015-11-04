@@ -26,6 +26,10 @@ export FAILURE_MSG="Deployment update failure+in ${ENV} for ${ARTIFACTID} v${VER
 
 export LABEL="[vivacloud][deployment]"
 
+tmp_deployid=$(mktemp -d -t tmpdeploy.XXXXXXXXXX)
+
+function deploy_service {
+
 curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} Deployment operation request"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
 
 echo -n "${LABEL}${TYPE}  Sending notification"
@@ -56,6 +60,9 @@ else
     export TYPE="[RELEASE]"
     TO_DOWNLOAD="${REPO_URL}?r=releases&g=${GROUPID}&a=${ARTIFACTID}&c=${CLASSIFIER}&p=tar.gz&v=${VERSION}"
 fi
+
+
+
 
 echo "${LABEL}${TYPE} DEPLOYMENT FOR  : ${PRODUCTID}"   
 echo "${LABEL}${TYPE} REPO_URL        : ${REPO_URL}"  
@@ -133,4 +140,10 @@ echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has been su
 echo -n "${LABEL}${TYPE}  Sending notification"
 curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
 echo ""
+
+rm -rf "$tmp_deployid"
 exit 0
+}
+
+trap deploy_service exit
+

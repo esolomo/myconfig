@@ -62,8 +62,6 @@ else
 fi
 
 
-
-
 echo "${LABEL}${TYPE} DEPLOYMENT FOR  : ${PRODUCTID}"   
 echo "${LABEL}${TYPE} REPO_URL        : ${REPO_URL}"  
 echo "${LABEL}${TYPE} GROUPID         : ${GROUPID}"  
@@ -109,13 +107,13 @@ then
 	cp -r /sites/${PRODUCTID}/confd/templates/* /etc/confd/templates/
 	echo "${LABEL} Configuring app "
 
-	confd -debug=true -verbose=true -onetime -node $ETCD  -confdir=/sites/${PRODUCTID}/confd
+	confd -debug=true -backend=consul -verbose=true -onetime -node $CM  -confdir=/sites/${PRODUCTID}/confd
 	
 	if [ $? ]
 	then
 	    echo -n "${LABEL}${TYPE}  Sending notification"
-	curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
-	echo ""
+	    curl -X POST --data-urlencode 'payload={"text": "'"${LABEL} ${SUCCESS_CONFIG_ONLY_MSG}"'", "channel": "#deployment", "username": "'"${NOTIFICATION_USER}"'", "icon_emoji": ":monkey_face:"}' https://hooks.slack.com/services/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
+	    echo ""
 	else
 	    echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has failed " 
 	    echo -n "${LABEL}${TYPE}  Sending notification"
@@ -127,8 +125,11 @@ then
 	echo "${LABEL}${TYPE} Same artifact nothing to do"
 	exit 0	
     fi
-    
 
+    echo "${LABEL}${TYPE}  Starting service ${PRODUCTID}"  
+
+    /bin/bash /sites/${PRODUCTID}/bin/start.sh 
+        
 else
     echo "${LABEL}${TYPE} Deployment for ${PRODUCTID} version ${VERSION} has failed "     
     exit 1
