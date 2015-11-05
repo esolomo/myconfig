@@ -11,8 +11,6 @@ export SERVICE_ID=${SERVICE_ID:-meteorjs.internal}
 
 
 echo "Updating Stack : "
-apt-get update
-apt-get install -y wget curl
 
 for service in ${SERVICE_ID}
 do
