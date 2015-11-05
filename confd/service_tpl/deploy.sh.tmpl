@@ -107,7 +107,7 @@ then
 	cp -r /sites/${PRODUCTID}/confd/templates/* /etc/confd/templates/
 	echo "${LABEL} Configuring app "
 
-	confd -debug=true -backend=consul  -log-level="debug" -onetime -node $CM  -confdir=/sites/${PRODUCTID}/confd
+	confd  -backend=consul  -log-level="debug" -onetime -node $CM  -confdir=/sites/${PRODUCTID}/confd
 	
 	if [ $? ]
 	then
