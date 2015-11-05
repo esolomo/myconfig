@@ -3,15 +3,16 @@
 set -eo pipefail
 
 export CM_PORT=${CM_PORT:-8500}
-export HOST_IP=${HOST_IP:-10.152.253.248}
+export HOST_IP=${HOST_IP:-10.152.253.1}
 export CM=$HOST_IP:$CM_PORT
-export LABEL="[VivaCloud]"
-export GLOBAL_SERVICE="[MeteorJS]"
+export LABEL="[SainsBurysCloud]"
 export SERVICE_ID=${SERVICE_ID:-meteorjs.internal}
-
 
 echo "Updating Stack with curl: "
 apt-get install -y curl
+
+echo "Configuration Management server IP : " $CM
+echo "Configuration Management server Port : " $CM_PORT
 
 for service in ${SERVICE_ID}
 do
@@ -23,18 +24,12 @@ do
     cat /etc/confd/service_tpl/deploy.conf.toml | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/conf.d/deploy.sh.toml"
     cat /etc/confd/service_tpl/deploy.sh.tmpl | sed s/"viva-service"/${service}/g | tee -a > "/etc/confd/${service}/templates/deploy.sh.tmpl"
     sleep 5
-    echo $CM
     /usr/local/bin/confd -onetime -log-level="debug"  -backend=consul  -node $CM  -confdir="/etc/confd/${service}" 
     echo "Initialization for service  ${service} : completed"
+    echo "Watching service configuration changes "
+    /usr/local/bin/confd -watch -log-level="debug"  -backend=consul  -node $CM  -confdir="/etc/confd/${service}" 
 done
 
-echo "Vivacloud Meteor Initialization Completed"
-echo "${LABEL} starting meteorjs service container"
 
-# Put a continual polling `confd` process into the background to watch
-# for changes every 10 seconds
-
-# Follow the logs to allow the script to continue running
-tail -f /dev/console
 
 
