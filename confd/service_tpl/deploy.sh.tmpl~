@@ -77,7 +77,7 @@ mv  /usr/src/${ARTIFACTID}.tar.gz  /usr/src/${ARTIFACTID}.old.tar.gz
 md5sum /usr/src/${ARTIFACTID}.old.tar.gz | cut -f 1 -d ' ' > /usr/src/${ARTIFACTID}.old.md5
 
 echo "${LABEL}${TYPE} Downloading ${TO_DOWNLOAD} " 
-wget -t 3 ${TO_DOWNLOAD}  -O /usr/src/${ARTIFACTID}.tar.gz 
+curl -XGET  ${TO_DOWNLOAD}  -o /usr/src/${ARTIFACTID}.tar.gz 
 
 if [ $? -eq 0 ]
 then
