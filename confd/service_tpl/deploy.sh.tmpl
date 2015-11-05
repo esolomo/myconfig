@@ -38,7 +38,7 @@ echo " "
 
 if ${CONFIGONLY}; then
     echo "${LABEL}${TYPE} configuring service only"
-    if [ -e /sites/${PRODUCTID}/confd/bin/confd-watch ]
+    if [ -e /sites/${PRODUCTID}/confd/bin/confd-watch]
     then
 	/bin/bash /sites/${PRODUCTID}/confd/bin/confd-watch 
 	echo -n "${LABEL}${TYPE}  Sending notification"
@@ -99,7 +99,7 @@ then
   	tar xvzf  /usr/src/${ARTIFACTID}.tar.gz -C /sites 
 	
 	echo "${LABEL}${TYPE} Installing service" 
-	/bin/bash /sites/${PRODUCTID}/confd/bin/install.sh 
+	/bin/bash /sites/${PRODUCTID}/bin/install.sh 
 	
 	
 	echo "${LABEL}${TYPE} configuring service" 
