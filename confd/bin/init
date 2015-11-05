@@ -10,7 +10,8 @@ export GLOBAL_SERVICE="[MeteorJS]"
 export SERVICE_ID=${SERVICE_ID:-meteorjs.internal}
 
 
-echo "Updating Stack : "
+echo "Updating Stack with curl: "
+apt-get install -y curl
 
 for service in ${SERVICE_ID}
 do
